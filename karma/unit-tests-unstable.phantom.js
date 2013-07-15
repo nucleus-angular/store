@@ -3,6 +3,7 @@ basePath = '..';
 files = [
   JASMINE,
   JASMINE_ADAPTER,
+  'components/lodash/dist/lodash.js',
   'components/store.js/store.js',
   'components/unstable-angular-complete/angular.js',
   'components/unstable-angular-complete/angular-mocks.js',

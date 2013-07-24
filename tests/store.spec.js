@@ -14,6 +14,7 @@ describe('Store', function(){
     $exceptionHandler = $injector.get('$exceptionHandler');
 
     store.remove('test');
+    store.remove('test2');
   }));
 
   afterEach(function() {
@@ -61,9 +62,9 @@ describe('Store', function(){
       title: 'test 3'
     }];
 
-    nagStore.registerKey('test', '/api/test', function(response) {
+    nagStore.registerKey('test', '/api/test', 100, function(response) {
       return response.response.data;
-    }, 100);
+    });
 
     $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
       return [200, {
@@ -98,9 +99,9 @@ describe('Store', function(){
     nagStore.registerKey('test', {
       method: 'GET',
       url: '/api/test'
-    }, function(response) {
+    }, 100, function(response) {
       return response.response.data;
-    }, 100);
+    });
 
     $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
       return [200, {
@@ -120,6 +121,104 @@ describe('Store', function(){
     expect(test).toEqual(responseData);
   });
 
+  it("should not make a http request for the data when a registered keys has not expired", function() {
+    var responseData = [{
+      id: 1,
+      title: 'test 1'
+    }, {
+      id: 2,
+      title: 'test 2'
+    }, {
+      id: 3,
+      title: 'test 3'
+    }];
+
+    nagStore.registerKey('test', {
+      method: 'GET',
+      url: '/api/test'
+    }, 100, function(response) {
+      return response.response.data;
+    });
+
+    $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
+      return [200, {
+        response: {
+          status: 'success',
+          data: responseData
+        }
+      }, {}];
+    });
+    var test;
+
+    nagStore.get('test').then(function(data) {
+      test = data;
+    });
+    $httpBackend.flush();
+
+    //this second time should not trigger a request for the data
+    test = nagStore.get('test');
+
+    expect(test).toEqual(responseData);
+  });
+
+  it("should refetch data automatically when registered key expires", function() {
+    var responseData = [{
+      id: 1,
+      title: 'test 1'
+    }, {
+      id: 2,
+      title: 'test 2'
+    }, {
+      id: 3,
+      title: 'test 3'
+    }];
+
+    nagStore.registerKey('test', {
+      method: 'GET',
+      url: '/api/test'
+    }, 100, function(response) {
+      return response.response.data;
+    });
+
+    $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
+      return [200, {
+        response: {
+          status: 'success',
+          data: responseData
+        }
+      }, {}];
+    });
+    var test;
+
+    nagStore.get('test');
+    $httpBackend.flush();
+
+    //todo: investigate: for whatever reason FireFox needs the timeout to be a little bit higher for it to work
+    waitsFor(function() {
+      var tmp;
+      tmp = nagStore.get('test');
+      if(tmp.then) {
+        $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
+          return [200, {
+            response: {
+              status: 'success',
+              data: responseData
+            }
+          }, {}];
+        });
+        tmp.then(function(data) {
+          test = data;
+        });
+        $httpBackend.flush();
+
+        expect(test).toEqual(responseData);
+
+        return true;
+      }
+    }, "data to expire", 500);
+
+  });
+
   it("should be able to pass an object with both a success and error callback instead of just a success callback", function() {
     var responseData = [{
       id: 1,
@@ -135,14 +234,14 @@ describe('Store', function(){
     nagStore.registerKey('test', {
       method: 'GET',
       url: '/api/test'
-    }, {
+    }, 100, {
       success: function(response) {
         return response.response.data;
       },
       error: function(response) {
         throw new Error(response.response.message);
       }
-    }, 100);
+    });
 
     $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
       return [500, {

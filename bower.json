@@ -5,9 +5,7 @@
     "store.js": "1.3.7"
   },
   "devDependencies": {
-    "angular": "1.0.x",
-    "angular-mocks": "1.0.x",
-    "unstable-angular-complete": "1.1.x",
-    "lodash": "1.2.x"
+    "unstable-angular-complete": "1.2.0rc2",
+    "lodash": "1.2.1"
   }
 }

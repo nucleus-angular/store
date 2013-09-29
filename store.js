@@ -82,6 +82,9 @@ angular.module('nag.store', [])
 
       /**
        * Removes data from the local storage
+       *
+       * @method remove
+       *
        * @param key
        */
       remove: function(key) {

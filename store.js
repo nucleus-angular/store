@@ -1,5 +1,9 @@
 /**
- * A service the wraps the store.js functionality and adds in support for "expiring" data
+ * # Store
+ *
+ * A service the wraps the store.js functionality and adds in support for "expiring" data.
+ *
+ * EXAMPLE TODO
  *
  * @module nag.store.nagStore
  * @ngservice nagStore

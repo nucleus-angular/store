@@ -1,5 +1,5 @@
 describe('Store', function(){
-  var nagStore, $timeout, $httpBackend, $exceptionHandler;
+  var nagStore, $timeout, $httpBackend, $exceptionHandler, $q, $rootScope;
 
   beforeEach(module('nag.store'));
 
@@ -12,6 +12,8 @@ describe('Store', function(){
     $timeout = $injector.get('$timeout');
     $httpBackend = $injector.get('$httpBackend');
     $exceptionHandler = $injector.get('$exceptionHandler');
+    $rootScope = $injector.get('$rootScope');
+    $q = $injector.get('$q');
 
     store.remove('test');
     store.remove('test2');
@@ -23,34 +25,61 @@ describe('Store', function(){
   });
 
   it("should be able to set/get data", function() {
-    expect(nagStore.get('test')).toBeUndefined();
+    var value = 'test';
+
+    nagStore.get('test').then(function(data) {
+      value = data;
+    });
+
+    //need this in order to make sure the promise is resolved properly
+    $rootScope.$digest();
+    
+    expect(value).to.be.undefined;
 
     nagStore.set('test', 'data');
+    value = nagStore.get('test').then(function(data) {
+      value = data;
+    });
 
-    expect(nagStore.get('test')).toBe('data');
+    //need this in order to make sure the promise is resolved properly
+    $rootScope.$digest();
+
+    expect(value).to.equal('data');
   });
 
-  it("should be able to set/get data with an expire time", function() {
+  it("should be able to set/get data with an expire time", function(done) {
     nagStore.set('test', 'data', 100);
 
-    //todo: investigate: for whatever reason FireFox needs the timeout to be a little bit higher for it to work
-    waitsFor(function() {
-      return nagStore.get('test') !== 'data';
-    }, "data did not expire", 500);
+    setTimeout(function() {
+      var value = 'test';
 
-    runs(function() {
-      expect(nagStore.get('test')).toBeUndefined();
-    });
+      nagStore.get('test').then(function(data) {
+        value = data;
+      });
+      //need this in order to make sure the promise is resolved properly
+      $rootScope.$digest();
+
+      expect(value).to.be.undefined;
+      done();
+    }, 200);
   });
 
   it("should be able to remove data", function() {
     nagStore.set('test', 'data');
     nagStore.remove('test', 'data');
 
-    expect(nagStore.get('test')).toBeUndefined();
+    var value = 'test';
+
+    nagStore.get('test').then(function(data) {
+      value = data;
+    });
+    //need this in order to make sure the promise is resolved properly
+    $rootScope.$digest();
+
+    expect(value).to.be.undefined;
   });
 
-  it("should be able to configure a key with a remote resource and caching time", function() {
+  it("should be able to configure a key with a remote resource", function() {
     var responseData = [{
       id: 1,
       title: 'test 1'
@@ -74,14 +103,15 @@ describe('Store', function(){
         }
       }, {}];
     });
-    var test;
+    var value;
 
     nagStore.get('test').then(function(data) {
-      test = data;
+      value = data;
     });
+    //need this in order to make sure the promise is resolved properly
     $httpBackend.flush();
 
-    expect(test).toEqual(responseData);
+    expect(value).to.deep.equal(responseData);
   });
 
   it("should be able to pass in $http options object instead of just url string when registering a key", function() {
@@ -111,14 +141,14 @@ describe('Store', function(){
         }
       }, {}];
     });
-    var test;
-
+    var value;
     nagStore.get('test').then(function(data) {
-      test = data;
+      value = data;
     });
+    //this handles calling $digest on scope
     $httpBackend.flush();
 
-    expect(test).toEqual(responseData);
+    expect(value).to.deep.equal(responseData);
   });
 
   it("should not make a http request for the data when a registered keys has not expired", function() {
@@ -148,20 +178,27 @@ describe('Store', function(){
         }
       }, {}];
     });
-    var test;
+    var value;
 
     nagStore.get('test').then(function(data) {
-      test = data;
+      value = data;
     });
+    //this handles calling $digest on scope
     $httpBackend.flush();
 
     //this second time should not trigger a request for the data
-    test = nagStore.get('test');
+    value = null;
 
-    expect(test).toEqual(responseData);
+    nagStore.get('test').then(function(data) {
+      value = data;
+    });
+    //this handles calling $digest on scope
+    $rootScope.$digest();
+
+    expect(value).to.deep.equal(responseData);
   });
 
-  it("should refetch data automatically when registered key expires", function() {
+  it("should refetch data automatically when registered key expires", function(done) {
     var responseData = [{
       id: 1,
       title: 'test 1'
@@ -188,35 +225,32 @@ describe('Store', function(){
         }
       }, {}];
     });
-    var test;
-
-    nagStore.get('test');
+    var value;
+    nagStore.get('test').then(function(data) {
+      value = data;
+    });
+    //this handles calling $digest on scope
     $httpBackend.flush();
 
-    //todo: investigate: for whatever reason FireFox needs the timeout to be a little bit higher for it to work
-    waitsFor(function() {
-      var tmp;
-      tmp = nagStore.get('test');
-      if(tmp.then) {
-        $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
-          return [200, {
-            response: {
-              status: 'success',
-              data: responseData
-            }
-          }, {}];
-        });
-        tmp.then(function(data) {
-          test = data;
-        });
-        $httpBackend.flush();
+    setTimeout(function() {
+      $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
+        return [200, {
+          response: {
+            status: 'success',
+            data: responseData
+          }
+        }, {}];
+      });
+      var value;
+      nagStore.get('test').then(function(data) {
+        value = data;
+      });
+      //this handles calling $digest on scope
+      $httpBackend.flush();
 
-        expect(test).toEqual(responseData);
-
-        return true;
-      }
-    }, "data to expire", 500);
-
+      expect(value).to.deep.equal(responseData);
+      done();
+    }, 200);
   });
 
   it("should be able to pass an object with both a success and error callback instead of just a success callback", function() {
@@ -251,11 +285,15 @@ describe('Store', function(){
         }
       }, {}];
     });
-    nagStore.get('test');
+    var value;
+    nagStore.get('test').then(function(data) {
+      value = data;
+    });
+    //this handles calling $digest on scope
     $httpBackend.flush();
 
-    expect($exceptionHandler.errors.length).toBe(1);
-    expect($exceptionHandler.errors[0].message).toBe('Server Error');
+    expect($exceptionHandler.errors.length).to.equal(1);
+    expect($exceptionHandler.errors[0].message).to.equal('Server Error');
 
     $httpBackend.expect('GET', '/api/test').respond(function(method, url, data) {
       return [200, {
@@ -265,13 +303,13 @@ describe('Store', function(){
         }
       }, {}];
     });
-    var test;
 
     nagStore.get('test').then(function(data) {
-      test = data;
+      value = data;
     });
+    //this handles calling $digest on scope
     $httpBackend.flush();
 
-    expect(test).toEqual(responseData);
+    expect(value).to.deep.equal(responseData);
   });
 });

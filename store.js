@@ -51,6 +51,10 @@ angular.module('nag.store', [])
       get: function(key) {
         var now = (new Date()).getTime();
         var storedData = store.get(key);
+        var deferred = $q.defer();
+        var returnData = {
+          then: deferred.promise.then
+        };
 
         if(storedData && storedData.expires && storedData.expires <= now) {
           //make sure the data is removed from the store
@@ -58,12 +62,12 @@ angular.module('nag.store', [])
           storedData = undefined;
         } else if(storedData) {
           storedData = storedData.value;
+          deferred.resolve(storedData);
         }
 
         //check to see if the key is registered with a remote resource if no data has been found
         if((storedData === undefined || storedData === null) && registeredKeys[key]) {
           var remoteResource = registeredKeys[key];
-          var deferred = $q.defer();
 
           $http(remoteResource.httpOptions)
           .success(function(response) {
@@ -77,9 +81,13 @@ angular.module('nag.store', [])
           });
 
           storedData = deferred.promise;
+        } else {
+          deferred.resolve(storedData);
         }
 
-        return storedData;
+        returnData.value = storedData;
+
+        return returnData;
       },
 
       set: setFunction,

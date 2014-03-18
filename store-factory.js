@@ -5,10 +5,10 @@
  *
  * EXAMPLE TODO
  *
- * @module nag.store.nagStore
+ * @module nag.store
  * @ngservice nagStore
  */
-angular.module('nag.store', [])
+angular.module('nag.store')
 .factory('nagStore', [
   '$http',
   '$q',

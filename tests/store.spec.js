@@ -33,7 +33,7 @@ describe('Store', function(){
 
     //need this in order to make sure the promise is resolved properly
     $rootScope.$digest();
-    
+
     expect(value).to.be.undefined;
 
     nagStore.set('test', 'data');

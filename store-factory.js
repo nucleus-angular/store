@@ -52,9 +52,7 @@ angular.module('nag.store')
         var now = (new Date()).getTime();
         var storedData = store.get(key);
         var deferred = $q.defer();
-        var returnData = {
-          then: deferred.promise.then
-        };
+        var returnData = deferred.promise
 
         if(storedData && storedData.expires && storedData.expires <= now) {
           //make sure the data is removed from the store
